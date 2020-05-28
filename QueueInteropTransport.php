@@ -70,7 +70,7 @@ class QueueInteropTransport implements TransportInterface
         }
 
         try {
-            if (null === ($interopMessage = $this->getConsumer()->receive($this->options['receiveTimeout'] ?? 30000))) {
+            if (null === ($interopMessage = $this->getConsumer()->receive($this->options['receiveTimeout'] ?? 20000))) {
                 return array();
             }
         } catch (\Exception $e) {

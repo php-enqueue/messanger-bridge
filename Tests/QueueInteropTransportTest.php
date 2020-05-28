@@ -440,7 +440,7 @@ class QueueInteropTransportTest extends TestCase
         $interopMessage->method('getProperties')->willReturn(array());
 
         $psrConsumerProphecy = $this->prophesize(Consumer::class);
-        $psrConsumerProphecy->receive(30000)->shouldBeCalled()->willReturn($interopMessage);
+        $psrConsumerProphecy->receive(20000)->shouldBeCalled()->willReturn($interopMessage);
         $psrConsumerProphecy->reject($interopMessage)->shouldBeCalled();
 
         $psrQueueProphecy = $this->prophesize(Queue::class);
@@ -472,7 +472,7 @@ class QueueInteropTransportTest extends TestCase
     public function testNullHandler()
     {
         $psrConsumerProphecy = $this->prophesize(Consumer::class);
-        $psrConsumerProphecy->receive(30000)->shouldBeCalled()->willReturn(null);
+        $psrConsumerProphecy->receive(20000)->shouldBeCalled()->willReturn(null);
 
         $psrQueueProphecy = $this->prophesize(Queue::class);
         $psrQueue = $psrQueueProphecy->reveal();
