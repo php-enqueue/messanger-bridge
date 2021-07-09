@@ -18,6 +18,7 @@ use Enqueue\MessengerAdapter\EnvelopeItem\InteropMessageStamp;
 use Enqueue\MessengerAdapter\EnvelopeItem\TransportConfiguration;
 use Enqueue\MessengerAdapter\Exception\MissingMessageMetadataSetterException;
 use Enqueue\MessengerAdapter\Exception\SendingMessageFailedException;
+use Enqueue\SnsQs\SnsQsProducer;
 use Interop\Queue\Consumer;
 use Interop\Queue\Exception as InteropQueueException;
 use Interop\Queue\Message;
@@ -25,6 +26,7 @@ use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\LogicException;
 use Symfony\Component\Messenger\Exception\MessageDecodingFailedException;
 use Symfony\Component\Messenger\Stamp\DelayStamp;
+use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface;
 use Symfony\Component\OptionsResolver\Options;
@@ -136,6 +138,14 @@ class QueueInteropTransport implements TransportInterface
         $this->setMessageMetadata($interopMessage, $envelope);
 
         $producer = $context->createProducer();
+
+        if (
+            isset($destination['queue'])
+            && null !== $envelope->last(RedeliveryStamp::class)
+            && $producer instanceof SnsQsProducer
+        ) {
+            $topic = $context->createQueue($destination['queue']);
+        }
 
         $delay = 0;
         $delayStamp = $envelope->last(DelayStamp::class);

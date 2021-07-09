@@ -39,6 +39,7 @@
     "require-dev": {
         "phpspec/prophecy": "^1.8.0",
         "phpunit/phpunit": "^7.1",
-        "symfony/yaml": "^3.4|^4.1|^5"
+        "symfony/yaml": "^3.4|^4.1|^5",
+        "enqueue/snsqs": "^0.10.11"
     }
 }

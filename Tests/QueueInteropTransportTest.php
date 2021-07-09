@@ -18,6 +18,7 @@ use Enqueue\MessengerAdapter\EnvelopeItem\TransportConfiguration;
 use Enqueue\MessengerAdapter\Exception\MissingMessageMetadataSetterException;
 use Enqueue\MessengerAdapter\QueueInteropTransport;
 use Enqueue\MessengerAdapter\Tests\Fixtures\DecoratedPsrMessage;
+use Enqueue\SnsQs\SnsQsProducer;
 use Interop\Queue\Consumer;
 use Interop\Queue\Context;
 use Interop\Queue\Exception\Exception;
@@ -28,6 +29,7 @@ use Interop\Queue\Topic;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Messenger\Envelope;
 use Symfony\Component\Messenger\Exception\MessageDecodingFailedException;
+use Symfony\Component\Messenger\Stamp\RedeliveryStamp;
 use Symfony\Component\Messenger\Transport\Serialization\SerializerInterface;
 use Symfony\Component\Messenger\Transport\TransportInterface;
 
@@ -269,6 +271,59 @@ class QueueInteropTransportTest extends TestCase
                 'transport_name' => $transportName,
                 'topic' => array('name' => $topicName, 'foo' => 'bar'),
                 'queue' => array('name' => $queueName, 'bar' => 'foo'),
+            ),
+            true
+        );
+
+        $transport->send($envelope);
+    }
+
+    public function testSendSnsQsRedeliveryMessageOnQueue()
+    {
+        $transportName = 'transport';
+        $topicName = 'topic';
+        $queueName = 'queue';
+        $message = new \stdClass();
+        $message->foo = 'bar';
+        $envelope = (new Envelope($message))->with(new RedeliveryStamp(1));
+
+        $psrMessageProphecy = $this->prophesize(Message::class);
+        $psrMessage = $psrMessageProphecy->reveal();
+
+        $topicProphecy = $this->prophesize(Topic::class);
+        $topic = $topicProphecy->reveal();
+
+        $queueProphecy = $this->prophesize(Queue::class);
+        $queue = $queueProphecy->reveal();
+
+        $producerProphecy = $this->prophesize(SnsQsProducer::class);
+        $producerProphecy->send($queue, $psrMessage)->shouldBeCalled();
+
+        $contextProphecy = $this->prophesize(Context::class);
+        $contextProphecy->createTopic($topicName)->shouldBeCalled()->willReturn($topic);
+        $contextProphecy->createQueue($queueName)->shouldBeCalled()->willReturn($queue);
+        $contextProphecy->createProducer()->shouldBeCalled()->willReturn($producerProphecy->reveal());
+        $contextProphecy->createMessage('foo', array(), array())->shouldBeCalled()->willReturn($psrMessage);
+
+        $contextManagerProphecy = $this->prophesize(ContextManager::class);
+        $contextManagerProphecy->context()->shouldBeCalled()->willReturn($contextProphecy->reveal());
+        $contextManagerProphecy->ensureExists(array(
+            'topic' => $topicName,
+            'topicOptions' => array('name' => $topicName),
+            'queue' => $queueName,
+            'queueOptions' => array('name' => $queueName),
+        ))->shouldBeCalled();
+
+        $encoderProphecy = $this->prophesize(SerializerInterface::class);
+        $encoderProphecy->encode($envelope)->shouldBeCalled()->willReturn(array('body' => 'foo'));
+
+        $transport = $this->getTransport(
+            $encoderProphecy->reveal(),
+            $contextManagerProphecy->reveal(),
+            array(
+                'transport_name' => $transportName,
+                'topic' => array('name' => $topicName),
+                'queue' => array('name' => $queueName),
             ),
             true
         );
